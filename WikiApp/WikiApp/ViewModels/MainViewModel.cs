@@ -292,8 +292,13 @@ namespace WikiApp.ViewModels
                 var tagList = TagsInput?.Split(',')?.Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
                 NoteService.UpdateTagsForNote(SelectedNote.Id, tagList ?? new());
 
-                RenderPreview(NoteContent);
                 IsEditing = false;
+
+              
+                string refreshed = File.ReadAllText(SelectedNote.FilePath);
+                NoteContent = refreshed;
+                RenderPreview(refreshed);
+
             }
             catch (Exception ex)
             {
