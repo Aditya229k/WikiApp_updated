@@ -37,8 +37,18 @@ namespace WikiApp.ViewModels
         public string NoteContent
         {
             get => _noteContent;
-            set { _noteContent = value; OnPropertyChanged(); }
+            set
+            {
+                _noteContent = value;
+                OnPropertyChanged();
+
+                if (IsEditing)
+                {
+                    RenderPreview(_noteContent); // 🔁 Live preview update
+                }
+            }
         }
+
 
         private bool _isEditing;
         public bool IsEditing
@@ -87,11 +97,10 @@ namespace WikiApp.ViewModels
                 return;
             }
 
-            // Step 1: Use Lucene to get matching file paths
+            
             var results = noteService.SearchNotes(SearchText);
             var matchedPaths = results.Select(r => r.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // Step 2: Filter the hierarchy based on content matches
             foreach (var cat in Categories)
             {
                 var matchedNotes = cat.Notes
@@ -113,7 +122,7 @@ namespace WikiApp.ViewModels
                 }
             }
 
-            // Step 3: Show first match (optional)
+            
             var topMatch = results.FirstOrDefault();
             if (topMatch != null && File.Exists(topMatch.FullPath))
             {
@@ -257,7 +266,15 @@ namespace WikiApp.ViewModels
         }
 
 
-        private void StartEditing() => IsEditing = true;
+        private void StartEditing()
+        {
+            IsEditing = true;
+            if (!string.IsNullOrWhiteSpace(NoteContent))
+            {
+                RenderPreview(NoteContent); 
+            }
+        }
+
 
         private void CancelEditing()
         {
@@ -417,8 +434,11 @@ namespace WikiApp.ViewModels
 
             Application.Current.Dispatcher.Invoke(async () =>
             {
+                string previewElementName = IsEditing ? "EditPreviewBrowser" : "PreviewBrowser";
+
                 if (Application.Current.MainWindow is Window window &&
-                    window.FindName("PreviewBrowser") is Microsoft.Web.WebView2.Wpf.WebView2 webView)
+                    window.FindName(previewElementName) is Microsoft.Web.WebView2.Wpf.WebView2 webView)
+
                 {
                     await webView.EnsureCoreWebView2Async();
                     webView.CoreWebView2.SetVirtualHostNameToFolderMapping(

@@ -180,31 +180,48 @@
                     </ItemsControl>
                 </Grid>
 
-                <!-- Edit Mode -->
+               
+                <!-- Edit Mode: Editor (Top) + Live Preview (Bottom) -->
                 <Grid Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="2*" />
+                        <!-- Editor -->
+                        <RowDefinition Height="2*" />
+                        <!-- Preview -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Tags Label -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Tags Input -->
                     </Grid.RowDefinitions>
 
-
+                    <!-- Markdown Editor -->
                     <TextBox x:Name="EditorTextBox"
-         Grid.Row="0"
-         AllowDrop="True"
-         PreviewDragOver="EditorTextBox_PreviewDragOver"
-         Drop="EditorTextBox_Drop"
-         Text="{Binding NoteContent, UpdateSourceTrigger=PropertyChanged}"
-         AcceptsReturn="True"
-         VerticalScrollBarVisibility="Auto"
-         FontFamily="Consolas"
-         FontSize="14"
-         Margin="0,0,0,10" />
+             Grid.Row="0"
+             AllowDrop="True"
+             PreviewDragOver="EditorTextBox_PreviewDragOver"
+             Drop="EditorTextBox_Drop"
+             Text="{Binding NoteContent, UpdateSourceTrigger=PropertyChanged}"
+             AcceptsReturn="True"
+             VerticalScrollBarVisibility="Auto"
+             FontFamily="Consolas"
+             FontSize="14"
+             Margin="0,0,0,10" />
 
+                    <!-- Live Markdown Preview -->
+                    <wv2:WebView2 x:Name="EditPreviewBrowser"
+                  Grid.Row="1"
+                  Margin="0,0,0,10" />
 
-                    <TextBlock Text="Tags (comma-separated):" Grid.Row="1" Margin="0,0,0,2"/>
-                    <TextBox Text="{Binding TagsInput, UpdateSourceTrigger=PropertyChanged}" Grid.Row="2"/>
+                    <!-- Tags Label -->
+                    <TextBlock Text="Tags (comma-separated):"
+               Grid.Row="2"
+               Margin="0,0,0,2" />
+
+                    <!-- Tags Input -->
+                    <TextBox Text="{Binding TagsInput, UpdateSourceTrigger=PropertyChanged}"
+             Grid.Row="3" />
                 </Grid>
+
             </Grid>
         </Grid>
     </Grid>
