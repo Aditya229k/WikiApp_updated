@@ -65,10 +65,69 @@ namespace WikiApp.ViewModels
 
                 if (!_suppressSearch)
                 {
-                    RunSearch();
+                    ApplyTreeFilter();
                 }
             }
         }
+        private ObservableCollection<CategoryViewModel> _filteredCategories = new();
+        public ObservableCollection<CategoryViewModel> FilteredCategories
+        {
+            get => _filteredCategories;
+            set { _filteredCategories = value; OnPropertyChanged(); }
+        }
+
+        private void ApplyTreeFilter()
+        {
+            FilteredCategories.Clear();
+
+            if (string.IsNullOrWhiteSpace(SearchText))
+            {
+                foreach (var cat in Categories)
+                    FilteredCategories.Add(cat);
+                return;
+            }
+
+            // Step 1: Use Lucene to get matching file paths
+            var results = noteService.SearchNotes(SearchText);
+            var matchedPaths = results.Select(r => r.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Step 2: Filter the hierarchy based on content matches
+            foreach (var cat in Categories)
+            {
+                var matchedNotes = cat.Notes
+                    .Where(n => matchedPaths.Contains(n.FilePath))
+                    .ToList();
+
+                if (matchedNotes.Any())
+                {
+                    var newCat = new CategoryViewModel
+                    {
+                        Id = cat.Id,
+                        Name = cat.Name
+                    };
+
+                    foreach (var note in matchedNotes)
+                        newCat.Notes.Add(note);
+
+                    FilteredCategories.Add(newCat);
+                }
+            }
+
+            // Step 3: Show first match (optional)
+            var topMatch = results.FirstOrDefault();
+            if (topMatch != null && File.Exists(topMatch.FullPath))
+            {
+                SelectedNote = Categories
+                    .SelectMany(c => c.Notes)
+                    .FirstOrDefault(n => n.FilePath == topMatch.FullPath);
+
+                NoteContent = File.ReadAllText(topMatch.FullPath);
+                RenderPreviewWithHighlight(NoteContent, topMatch.MatchStartIndex);
+            }
+        }
+
+
+
 
 
         private NoteSearchResult _selectedResult;
@@ -86,6 +145,7 @@ namespace WikiApp.ViewModels
                 }
             }
         }
+
 
 
         private readonly NoteService noteService = new();
@@ -185,6 +245,9 @@ namespace WikiApp.ViewModels
                 }
 
                 noteService.BuildIndex(allNotes);
+
+             
+                FilteredCategories = new ObservableCollection<CategoryViewModel>(Categories);
             }
             catch (Exception ex)
             {
@@ -192,6 +255,7 @@ namespace WikiApp.ViewModels
                 MessageBox.Show("Failed to load notes.");
             }
         }
+
 
         private void StartEditing() => IsEditing = true;
 
@@ -300,7 +364,7 @@ namespace WikiApp.ViewModels
         {
             _suppressSearch = true;
 
-            SearchText = string.Empty;         
+            SearchText = string.Empty;
             TopMatch = null;
             SearchResults.Clear();
 
@@ -308,11 +372,17 @@ namespace WikiApp.ViewModels
             {
                 string content = File.ReadAllText(SelectedNote.FilePath);
                 NoteContent = content;
-                RenderPreview(content);        
+                RenderPreview(content);
             }
+
+            
+            FilteredCategories = new ObservableCollection<CategoryViewModel>(Categories);
+            OnPropertyChanged(nameof(FilteredCategories));
 
             _suppressSearch = false;
         }
+
+
 
 
 
@@ -385,61 +455,24 @@ namespace WikiApp.ViewModels
                 return;
             }
 
-            string matched = SearchText;
-            string html = Markdig.Markdown.ToHtml(markdown);
+            string keyword = SearchText;
 
-            int firstMatchIndex = html.IndexOf(matched, StringComparison.OrdinalIgnoreCase);
+            // Escape characters that can break regex
+            string safeKeyword = Regex.Escape(keyword);
 
-            if (firstMatchIndex >= 0)
-            {
-                html = html.Substring(0, firstMatchIndex) +
-                       $"<a name='match'></a><mark>{html.Substring(firstMatchIndex, matched.Length)}</mark>" +
-                       html.Substring(firstMatchIndex + matched.Length);
+            // Highlight in raw markdown instead of rendered HTML
+            string highlightedMarkdown = Regex.Replace(
+                markdown,
+                safeKeyword,
+                m => $"<mark>{m.Value}</mark>",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+            );
 
-                html = Regex.Replace(
-                    html,
-                    Regex.Escape(matched),
-                    m => $"<mark>{m.Value}</mark>",
-                    RegexOptions.IgnoreCase
-                );
-            }
-
-           
-            string? baseUri = null;
-            if (SelectedNote?.FilePath != null)
-            {
-                string? path = SelectedNote?.FilePath;
-                if (!string.IsNullOrEmpty(path) && Directory.Exists(Path.GetDirectoryName(path)))
-                {
-                    string dir = Path.GetDirectoryName(path)!;
-                    baseUri = new Uri(new DirectoryInfo(dir).FullName + Path.DirectorySeparatorChar).AbsoluteUri;
-                }
-            }
-
-            string fullHtml = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8'>
-    <base href=""{baseUri}"">
-    <style>
-        mark {{ background-color: yellow; }}
-    </style>
-</head>
-<body onload=""location.href='#match'"">
-    {html}
-</body>
-</html>";
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is Window window &&
-                    window.FindName("PreviewBrowser") is Microsoft.Web.WebView2.Wpf.WebView2 webView)
-                {
-                    webView.NavigateToString(fullHtml);
-                }
-            });
+            RenderPreview(highlightedMarkdown);  // ← no need to re-do HTML parsing here
         }
+
+
+
 
 
 

@@ -239,63 +239,49 @@ namespace WikiApp.Services
             using var reader = DirectoryReader.Open(dir);
             var searcher = new IndexSearcher(reader);
             var analyzer = new StandardAnalyzer(luceneVersion);
-            var parser = new QueryParser(luceneVersion, "Content", analyzer);
 
-            Query luceneQuery;
-            try
-            {
-                luceneQuery = parser.Parse(query);
-            }
-            catch
-            {
-                return results;
-            }
+            var wildcardQuery = new WildcardQuery(new Term("Content", $"*{query.ToLower()}*"));
 
-            var hits = searcher.Search(luceneQuery, 20).ScoreDocs;
-            var highlighter = new Highlighter(new SimpleHTMLFormatter("<b>", "</b>"), new QueryScorer(luceneQuery));
+            var hits = searcher.Search(wildcardQuery, 100).ScoreDocs;
 
             foreach (var hit in hits)
             {
                 var doc = searcher.Doc(hit.Doc);
                 var content = doc.Get("Content") ?? string.Empty;
 
-                string snippet;
-                try
-                {
-                    var tokenStream = analyzer.GetTokenStream("Content", new StringReader(content));
-                    string rawSnippet = highlighter.GetBestFragment(tokenStream, content);
-
-                    // Strip HTML tags for clean preview
-                    snippet = Regex.Replace(rawSnippet ?? "", "<.*?>", string.Empty);
-
-                }
-                catch
-                {
-                    snippet = null;
-                }
-
-                if (string.IsNullOrWhiteSpace(snippet))
-                {
-                    // fallback: plain snippet with no bold
-                    int previewLength = Math.Min(200, content.Length);
-                    snippet = content.Substring(0, previewLength);
-                }
-
-                int matchIndex = content.IndexOf(query, StringComparison.OrdinalIgnoreCase);
-                if (matchIndex < 0) matchIndex = 0;
+                string highlightedSnippet = GenerateSnippet(content, query);
 
                 results.Add(new NoteSearchResult
                 {
                     FileName = doc.Get("FileName") ?? string.Empty,
                     FullPath = doc.Get("FullPath") ?? string.Empty,
-                    Snippet = snippet,
-                    MatchStartIndex = matchIndex,
+                    Snippet = highlightedSnippet,
+                    MatchStartIndex = content.IndexOf(query, StringComparison.OrdinalIgnoreCase),
                     HighlightedKeyword = query
                 });
             }
 
             return results;
         }
+
+        private string GenerateSnippet(string content, string keyword)
+        {
+            if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(keyword))
+                return "";
+
+            // Escape for regex
+            string escapedKeyword = Regex.Escape(keyword);
+            string pattern = $"(?i)\\b({escapedKeyword})\\b"; // Match whole word (optional)
+
+            // Only highlight inside the snippet
+            int previewStart = Math.Max(content.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) - 50, 0);
+            int previewLength = Math.Min(300, content.Length - previewStart);
+            string snippet = content.Substring(previewStart, previewLength);
+
+            return Regex.Replace(snippet, pattern, "<mark>$1</mark>", RegexOptions.IgnoreCase);
+        }
+
+
 
 
         public void BuildIndex(IEnumerable<NoteModel> notes)

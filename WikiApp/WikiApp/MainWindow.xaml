@@ -87,11 +87,11 @@
 
             <!-- TreeView -->
             <Border Background="#F4F4F4" CornerRadius="4">
-                <TreeView ItemsSource="{Binding Categories}"
-                          SelectedItemChanged="TreeView_SelectedItemChanged"
-                          x:Name="NotesTreeView"
-                          Background="#f4f4f4"
-                          FontSize="16" FontWeight="DemiBold">
+                <TreeView ItemsSource="{Binding FilteredCategories}"
+              SelectedItemChanged="TreeView_SelectedItemChanged"
+              x:Name="NotesTreeView"
+              Background="#f4f4f4"
+              FontSize="16" FontWeight="DemiBold">
 
                     <TreeView.Resources>
                         <!-- Category Template -->
@@ -101,11 +101,11 @@
                                 <StackPanel.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Rename"
-                                                  Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                  CommandParameter="{Binding}" />
+                                      Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}" />
                                         <MenuItem Header="Delete"
-                                                  Command="{Binding DataContext.DeleteCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                  CommandParameter="{Binding}" />
+                                      Command="{Binding DataContext.DeleteCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}" />
                                     </ContextMenu>
                                 </StackPanel.ContextMenu>
                             </StackPanel>
@@ -119,11 +119,11 @@
                                 <StackPanel.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Edit"
-                                                  Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                  CommandParameter="{Binding}" />
+                                      Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}" />
                                         <MenuItem Header="Delete"
-                                                  Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                  CommandParameter="{Binding}" />
+                                      Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}" />
                                     </ContextMenu>
                                 </StackPanel.ContextMenu>
                             </StackPanel>
